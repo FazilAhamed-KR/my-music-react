@@ -31,7 +31,7 @@ const Apps = () => {
     playlist: document.querySelector("#select_playlist"),
     tracks: document.querySelector("#list"),
     submit: useState(null),
-    songDetail: useState(null),
+    songDetail: document.querySelector("#song_details"),
   };
 
   const createGenre = (text, value) => {
@@ -193,7 +193,7 @@ const Apps = () => {
     // resetTrackDetail();
     // var a = test;
     const token = getStoredToken().token;
-    // const selectedTracklist = inputField.tracks;
+    const selectedTracklist = inputField.songDetail;
     const trackEndpoint = e.target.id;
     const track = await getTrack(token, trackEndpoint);
     // console.log(track);
@@ -203,7 +203,7 @@ const Apps = () => {
       track.artists[0].name,
       track.preview_url
     );
-    document.querySelector("#song_details").innerHTML = a;
+    
     
   };
   return (
