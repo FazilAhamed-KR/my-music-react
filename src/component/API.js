@@ -57,7 +57,6 @@ export const getTracks = async (token, tracksEndPoint) => {
 };
 
 export const getTrack = async (token, trackEndPoint) => {
-
   try {
     const result = await fetch(`${trackEndPoint}`, {
       method: "GET",
@@ -70,20 +69,10 @@ export const getTrack = async (token, trackEndPoint) => {
       throw new Error(`HTTP error! Status: ${result.status}`);
     }
     //var a = result;
-    const data =  await result.json();
+    const data = await result.json();
     return data;
   } catch (error) {
     console.error("Error fetching track data:", error);
     throw error; // Propagate the error so that the calling code can handle it
   }
 };
-
-// export const inputField = () => {
-//   return {
-//     genre: document.querySelector("#select_genre"),
-//     playlist: document.querySelector("#select_playlist"),
-//     tracks: document.querySelector(".song-list"),
-//     submit: document.querySelector("#btn_submit"),
-//     songDetail: document.querySelector("#song-detail"),
-//   };
-// };

@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import "bootstrap/dist/css/bootstrap.min.css";
+import AudioPlayer from "react-h5-audio-player";
+import "react-h5-audio-player/lib/styles.css";
 import {
   getGenres,
   getPlaylistByGenre,
@@ -6,13 +9,20 @@ import {
   getTrack,
   getTracks,
 } from "./API";
+import { useDispatch, useSelector } from "react-redux";
+import { selectLikedTracks, toggleLike } from "./LikesSlice";
+import LikedList from "./LikedList";
+import LikeComponent from "./LikeComponent";
 
 const Apps = () => {
+  const dispatch = useDispatch();
   const [genres, setGenres] = useState([]);
   const [playlists, setPlaylists] = useState([]);
   const [tracks, setTracks] = useState([]);
   const [token, setToken] = useState("");
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [selectedTrack, setSelectedTrack] = useState();
+  const LikedLists = useSelector(selectLikedTracks);
 
   useEffect(() => {
     const loadGenres = async () => {
@@ -26,14 +36,6 @@ const Apps = () => {
     loadGenres();
   }, []);
 
-  const inputField = {
-    genre: useState(""),
-    playlist: document.querySelector("#select_playlist"),
-    tracks: document.querySelector("#list"),
-    submit: useState(null),
-    songDetail: document.querySelector("#song_details"),
-  };
-
   const createGenre = (text, value) => {
     setGenres((prevGenres) => [...prevGenres, { text, value }]);
   };
@@ -42,69 +44,65 @@ const Apps = () => {
     setPlaylists((prevPlaylists) => [...prevPlaylists, { text, value }]);
   };
 
-  const createTrack = (id, name, previewUrl) => {
-    setTracks((prevTracks) => [...prevTracks, { id, name, previewUrl }]);
+  const createTrack = (track) => {
+    setTracks((prevTracks) => [...prevTracks, track]);
   };
 
-  const createTrackDetail = (img, title, artist, songUrl) => {
-    return (
-      <div>
-      <div className="container">
-        <div className="row justify-content-center">
-          <div className="music-player">
-            <div className="album-art text-center">
-              <div className="row col-sm-12 px-0">
-                <img src={img} alt={title} />
-              </div>
-              <div className="song-info text-center">
-                <h5>{title}</h5>
-                <p>Artist Name: {artist}</p>
-              </div>
-              <div className="iconsContainer">
-                <div className="icons">
-                  <button
-                    id="prevButton"
-                    className="icon"
-                    onClick={playPreviousSong}
-                  >
-                    <i className="bi bi-skip-backward-fill"></i>
-                  </button>
-                  <audio id="myAudio" controls>
-                    <source src={songUrl} type="audio/mpeg" />
-                  </audio>
-                  <button id="playButton" className="icon" onClick={playAudio}>
-                    <i className="bi bi-play"></i>
-                  </button>
-                  <button
-                    id="nextButton"
-                    className="icon"
-                    onClick={playNextSong}
-                  >
-                    <i className="bi bi-skip-forward-fill"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      </div>
-    );
-    
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    resetTracks();
+    const token = getStoredToken().token;
+    const selectedPlaylist = document.querySelector("#select_playlist");
+    const tracksEndPoint =
+      selectedPlaylist.options[selectedPlaylist.selectedIndex].value;
+    const tracksData = await getTracks(token, tracksEndPoint);
+
+    // Ensure that tracksData is not empty
+    if (tracksData.length > 0) {
+      tracksData.forEach((el) => {
+        const track = el.track;
+
+        // Use optional chaining to handle potential undefined values
+        createTrack({
+          id: track?.href,
+          name: track?.name,
+          previewUrl: track?.preview_url,
+          img: track?.album?.images[1]?.url,
+          artist: track?.artists[0]?.name,
+        });
+      });
+    }
+
+    // Reset currentSongIndex to 0
+    setCurrentSongIndex(0);
   };
 
-  const resetTrackDetail = () => {
-    setTracks([]);
+  const createTrackDetail = (id, img, name, artist, previewUrl) => {
+    setSelectedTrack({ id, img, name, artist, previewUrl });
+  };
+
+  const handleTrackClick = async (e) => {
+    e.preventDefault();
+    const token = getStoredToken().token;
+    const trackEndpoint = e.target.id;
+    const tracks = await getTrack(token, trackEndpoint);
+    if (tracks) {
+      createTrackDetail(
+        tracks.href,
+        tracks.album?.images?.[1]?.url || "",
+        tracks.name || "",
+        tracks.artists?.[0]?.name || "",
+        tracks.preview_url || ""
+      );
+    } else {
+      console.error("Tracks data is not available or empty.");
+      // Handle the case where tracks data is not available or empty
+    }
   };
 
   const resetTracks = () => {
     setTracks([]);
-    resetTrackDetail();
-  };
-
-  const resetPlaylists = () => {
-    setPlaylists([]);
-    resetTracks();
+    // setSelectedTrack(null);
   };
 
   const storeToken = (value) => {
@@ -117,34 +115,27 @@ const Apps = () => {
     };
   };
 
-  const playPreviousSong = () => {
-    if (currentSongIndex > 0) {
-      setCurrentSongIndex((prevIndex) => prevIndex - 1);
-    } else {
-      // setCurrentSongIndex(songUrls.length - 1);
+  const playNextSong = (e) => {
+    e.preventDefault();
+    let nextTrackIndex = currentSongIndex + 1;
+    if (nextTrackIndex >= tracks.length) {
+      nextTrackIndex = 0;
     }
+    setCurrentSongIndex(nextTrackIndex);
+    setSelectedTrack(tracks[nextTrackIndex]);
   };
 
-  const playNextSong = () => {
-    // if (currentSongIndex < songUrls.length - 1) {
-    //   setCurrentSongIndex((prevIndex) => prevIndex + 1);
-    // } else {
-    //   setCurrentSongIndex(0);
-    // }
-  };
-
-  const playAudio = () => {
-    const audio = document.getElementById("myAudio");
-    const playButton = document.getElementById("playButton");
-
-    if (audio.paused) {
-      audio.play();
-      playButton.innerHTML = '<i class="bi bi-pause"></i>';
-    } else {
-      audio.pause();
-      playButton.innerHTML = '<i class="bi bi-play"></i>';
+  const playPreviousSong = (e) => {
+    e.preventDefault();
+    let prevTrackIndex = currentSongIndex - 1;
+    if (prevTrackIndex < 0) {
+      prevTrackIndex = tracks.length - 1;
     }
+    setCurrentSongIndex(prevTrackIndex);
+    setSelectedTrack(tracks[prevTrackIndex]);
   };
+
+  const playAudio = () => {};
 
   const loadGenres = async () => {
     const token = await getToken();
@@ -153,88 +144,89 @@ const Apps = () => {
     genres.forEach((element) => createGenre(element.name, element.id));
   };
 
-  // const handleGenreChange = async () => {
-  //   // resetPlaylists();
-  //   const token = getStoredToken().token;
-  //   const genreSelect = inputField.genre;
-  //   console.log(genreSelect);
-  //   console.log(genreSelect.options[genreSelect.selectedIndex]);
-  //   const genreId = genreSelect.options[genreSelect.selectedIndex].value;
-  //   const playlistData = await getPlaylistByGenre(token, genreId);
-  //   setPlaylists(playlistData)
-  //   playlistData.forEach((p) => createPlaylist(p.name, p.tracks.href))
-  // };
-
   const handleGenreChange = async (e) => {
+    e.preventDefault();
     // resetPlaylists();
     const token = getStoredToken().token;
     const genreId = e.target.value;
-    console.log(genreId);
     const playlistData = await getPlaylistByGenre(token, genreId);
     setPlaylists(playlistData);
     playlistData.forEach((p) => createPlaylist(p.name, p.tracks.href));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    resetTracks();
-    const token = getStoredToken().token;
-    const selectedPlaylist = inputField.playlist;
-    const tracksEndPoint =
-      selectedPlaylist.options[selectedPlaylist.selectedIndex].value;
-    const tracksData = await getTracks(token, tracksEndPoint);
-    tracksData.forEach((el) =>
-      createTrack(el.track.href, el.track.name, el.track.preview_url)
-    );
-  };
-
-  const handleTrackClick = async (e) => {
-    e.preventDefault();
-    // resetTrackDetail();
-    // var a = test;
-    const token = getStoredToken().token;
-    const selectedTracklist = inputField.songDetail;
-    const trackEndpoint = e.target.id;
-    const track = await getTrack(token, trackEndpoint);
-    // console.log(track);
-   var a = createTrackDetail(
-      track.album.images[2].url,
-      track.name,
-      track.artists[0].name,
-      track.preview_url
-    );
-    
-    
-  };
   return (
-    <div>
-      <select id="select_genre" onChange={handleGenreChange}>
-        {genres.map((genre) => (
-          <option key={genre.id} value={genre.id}>
-            {genre.name}
-          </option>
-        ))}
-      </select>
-
-      <select id="select_playlist">
-        {playlists.map((playlist) => (
-          <option key={playlist.id} value={playlist.href}>
-            {playlist.name}
-          </option>
-        ))}
-      </select>
+    <div className="container mt-2">
+      <div className="lists mb-3">
+        <select
+          className="form-select mb-2  w-0"
+          id="select_genre"
+          onChange={handleGenreChange}
+        >
+          {genres.map((genre) => (
+            <option key={genre.id} value={genre.id}>
+              {genre.name}
+            </option>
+          ))}
+        </select>
+        <select className="form-select mb-2 w-none" id="select_playlist">
+          {playlists.map((playlist) => (
+            <option key={playlist.id} value={playlist.href}>
+              {playlist.name}
+            </option>
+          ))}
+        </select>
+        <button
+          className="btn btn-primary"
+          id="btn_submit"
+          onClick={handleSubmit}
+        >
+          Submit
+        </button>
+      </div>
 
       <div id="list">
-        {tracks.map((tracks) => (
-          <p key={tracks.id} id={tracks.id} value={tracks.name} onClick={(handleTrackClick)}>
-            {tracks.name}
+        {tracks.map((track) => (
+          <p key={track.id} id={track.id} onClick={handleTrackClick}>
+            {track.name}
           </p>
         ))}
       </div>
-      <button id="btn_submit" onClick={handleSubmit}>
-        Submit
-      </button>
-      <div id="song_details"></div>
+
+      <div>
+        {selectedTrack && (
+          <div className="col align-items-center">
+            <div className="row-md-7">
+              <div className="album-art text-center mt-5">
+                <img
+                  src={selectedTrack.img}
+                  alt="Album Art"
+                  className="img-fluid"
+                />
+              </div>
+              <div className="song-info text-center mt-3">
+                <h5>Movie Name: {selectedTrack.name}</h5>
+                <p>Artist Name: {selectedTrack.artist}</p>
+                <div>
+                <LikeComponent track={selectedTrack} />
+                </div>
+                <div>
+                  <LikedList />
+                </div>
+              </div>
+            </div>
+            <div className="col-md-12">
+              <AudioPlayer
+                autoPlay
+                src={selectedTrack.previewUrl}
+                onPlay={playAudio}
+                showSkipControls={true}
+                onClickNext={playNextSong}
+                onClickPrevious={playPreviousSong}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
