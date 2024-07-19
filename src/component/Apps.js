@@ -136,12 +136,12 @@ const Apps = () => {
 
   const playAudio = () => {};
 
-  const loadGenres = async () => {
-    const token = await getToken();
-    storeToken(token);
-    const genres = await getGenres(token);
-    genres.forEach((element) => createGenre(element.name, element.id));
-  };
+  // const loadGenres = async () => {
+  //   const token = await getToken();
+  //   storeToken(token);
+  //   const genres = await getGenres(token);
+  //   genres.forEach((element) => createGenre(element.name, element.id));
+  // };
 
   const handleGenreChange = async (e) => {
     e.preventDefault();
